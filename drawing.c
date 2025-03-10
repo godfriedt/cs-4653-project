@@ -5,27 +5,20 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#define EVENT_QUEUE_SIZE 128
+#define EVENT_QUEUE_SIZE 256
+
+HandValue display_hand = 0;
 
 const int WORLD_WIDTH = 640;
 const int WORLD_HEIGHT = 360;
 
-// Real window size (px)
-static int window_width = WORLD_WIDTH;
-static int window_height = WORLD_HEIGHT;
+static RenderTexture2D canvas;
 
 const float CARD_HEIGHT = 77.0;
 const float CARD_WIDTH = 52.0;
 
 static int init = 0;
 static Texture2D card_atlas;
-static float scale = 4.0;
-
-Vector2 screen_to_world(Vector2 screen_position) {
-  screen_position.x /= scale;
-  screen_position.y /= scale;
-  return screen_position;
-}
 
 void draw_card(Card card, Vector2 position, float rotation, float flip) {
   if (card == 0 || init == 0)
@@ -42,20 +35,20 @@ void draw_card(Card card, Vector2 position, float rotation, float flip) {
                                    .y = suite * CARD_HEIGHT,
                                    .width = CARD_WIDTH,
                                    .height = CARD_HEIGHT};
-  Rectangle dst_rect = (Rectangle){.x = position.x * scale,
-                                   .y = position.y * scale,
-                                   .width = CARD_WIDTH * scale * flip,
-                                   .height = CARD_HEIGHT * scale};
-  DrawTexturePro(card_atlas, src_rect, dst_rect,
-                 (Vector2){.x = CARD_WIDTH / 2.0 * flip * scale,
-                           .y = CARD_HEIGHT / 2.0 * scale},
-                 rotation, RAYWHITE);
+  Rectangle dst_rect = (Rectangle){.x = position.x,
+                                   .y = position.y,
+                                   .width = CARD_WIDTH * flip,
+                                   .height = CARD_HEIGHT};
+  DrawTexturePro(
+      card_atlas, src_rect, dst_rect,
+      (Vector2){.x = CARD_WIDTH / 2.0 * flip, .y = CARD_HEIGHT / 2.0}, rotation,
+      RAYWHITE);
 }
 
 const Vector2 ZERO = (Vector2){0, 0};
 const float FLIP_SPEED = 8.0;
 const float MOVE_SPEED = 4.0;
-const float ROTATE_SPEED = 4.0;
+const float ROTATE_SPEED = 6.0;
 
 // App state
 static float frame_time = 1.0 / 60.0;
@@ -73,6 +66,11 @@ static float card_new_rotations[CARD_COUNT];
 static float card_old_flips[CARD_COUNT];
 static float card_new_flips[CARD_COUNT];
 
+static int32_t display_moneys[5] = {};
+static int32_t old_display_moneys[5] = {};
+static int32_t new_display_moneys[5] = {};
+static float money_animation_start[5] = {};
+
 // Animation event queue
 typedef struct {
   size_t card;
@@ -85,6 +83,10 @@ typedef struct {
   union {
     MoveEvent move;
     float wait;
+    struct {
+      size_t wallet;
+      int16_t amount;
+    } money;
   } variant;
 } Event;
 static Event event_queue[EVENT_QUEUE_SIZE];
@@ -96,45 +98,30 @@ const Vector2 DECK_POSITION = {(float)WORLD_WIDTH / 2 - 200,
                                (float)WORLD_HEIGHT / 2};
 
 const Vector2 HAND_POSITIONS[4][2] = {
-    {{0, (float)WORLD_HEIGHT / 2 - CARD_WIDTH / 2},
-     {0, (float)WORLD_HEIGHT / 2 + CARD_WIDTH / 2}},
+    {{0, (float)WORLD_HEIGHT / 2 + CARD_WIDTH / 2},
+     {0, (float)WORLD_HEIGHT / 2 - CARD_WIDTH / 2}},
 
-    {{(float)WORLD_WIDTH / 2 - CARD_WIDTH / 2, 0},
-     {(float)WORLD_WIDTH / 2 + CARD_WIDTH / 2, 0}},
+    {{(float)WORLD_WIDTH / 2 + CARD_WIDTH / 2, 0},
+     {(float)WORLD_WIDTH / 2 - CARD_WIDTH / 2, 0}},
 
-    {{WORLD_WIDTH, (float)WORLD_HEIGHT / 2 - CARD_WIDTH / 2},
-     {WORLD_WIDTH, (float)WORLD_HEIGHT / 2 + CARD_WIDTH / 2}},
+    {{WORLD_WIDTH, (float)WORLD_HEIGHT / 2 + CARD_WIDTH / 2},
+     {WORLD_WIDTH, (float)WORLD_HEIGHT / 2 - CARD_WIDTH / 2}},
 
-    {{(float)WORLD_WIDTH / 2 - CARD_WIDTH / 2, WORLD_HEIGHT},
-     {(float)WORLD_WIDTH / 2 + CARD_WIDTH / 2, WORLD_HEIGHT}},
+    {{(float)WORLD_WIDTH / 2 + CARD_WIDTH / 2, WORLD_HEIGHT},
+     {(float)WORLD_WIDTH / 2 - CARD_WIDTH / 2, WORLD_HEIGHT}},
 };
 
-void reset_board() {
-  for (int i = 0; i < CARD_COUNT; i++) {
-    card_positions[i] = card_old_positions[i] = card_new_positions[i] =
-        DECK_POSITION;
-    card_flips[i] = card_old_flips[i] = card_new_flips[i] = -1.0;
-    card_rotations[i] = card_old_rotations[i] = card_new_rotations[i] = 0;
-    animation_start[i] = GetTime();
-  }
-  for (int i = 0; i < CARD_COUNT; i += 4) {
-    queue_anim_move(i, DECK_POSITION, 180, -1.0);
-    queue_anim_wait(0.03);
-  }
-}
-
 void init_drawing() {
-  window_width = 1920;
-  window_height = 1080;
-  scale = (float)window_width / (float)WORLD_WIDTH;
-  InitWindow(window_width, window_height, "Hold'em");
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+  InitWindow(WORLD_WIDTH, WORLD_HEIGHT, "Hold'em");
   SetWindowTitle("Rowdy Hold'em");
+  canvas = LoadRenderTexture(WORLD_WIDTH, WORLD_HEIGHT);
   card_atlas = LoadTexture("res/cards_sheet.png");
   for (int i = 0; i < CARD_COUNT; i++) {
     card_positions[i] = card_old_positions[i] = card_new_positions[i] =
         DECK_POSITION;
     card_flips[i] = card_old_flips[i] = card_new_flips[i] = -1.0;
-    card_rotations[i] = card_old_rotations[i] = card_new_rotations[i] = 180;
+    card_rotations[i] = card_old_rotations[i] = card_new_rotations[i] = 0;
     animation_start[i] = GetTime();
   }
   last_event_start = GetTime();
@@ -178,8 +165,7 @@ void exec_now(size_t queue_position) {
   }
 }
 
-void queue_anim_move(size_t card, Vector2 position, float rotation,
-                     float flip) {
+void queue_anim(Event e) {
   event_queue_end += 1;
   event_queue_end %= EVENT_QUEUE_SIZE;
   if (event_queue_end == event_queue_start) {
@@ -187,36 +173,45 @@ void queue_anim_move(size_t card, Vector2 position, float rotation,
     event_queue_start += 1;
     event_queue_start %= EVENT_QUEUE_SIZE;
   }
-  Event event = (Event){.tag = 0,
-                        .variant.move = (MoveEvent){.card = card,
-                                                    .position = position,
-                                                    .rotation = rotation,
-                                                    .flip = flip}};
-  event_queue[event_queue_end] = event;
+  event_queue[event_queue_end] = e;
 }
 
+int is_animations_finished() { return event_queue_start == event_queue_end; }
+
+void queue_anim_move(size_t card, Vector2 position, float rotation,
+                     float flip) {
+  queue_anim((Event){.tag = 0,
+                     .variant.move = (MoveEvent){.card = card,
+                                                 .position = position,
+                                                 .rotation = rotation,
+                                                 .flip = flip}});
+}
+void flip_card(size_t card) {
+  queue_anim_move(card, card_new_positions[card], card_new_rotations[card],
+                  -card_flips[card]);
+}
+
+void queue_anim_money(size_t wallet, uint16_t new_amount) {
+  queue_anim((Event){.tag = 2, .variant.money = {wallet, new_amount}});
+};
+
 void queue_anim_wait(float time) {
-  event_queue_end += 1;
-  event_queue_end %= EVENT_QUEUE_SIZE;
-  if (event_queue_end == event_queue_start) {
-    exec_now(event_queue_start);
-    event_queue_start += 1;
-    event_queue_start %= EVENT_QUEUE_SIZE;
-  }
-  Event event = (Event){.tag = 1, .variant.wait = time};
-  event_queue[event_queue_end] = event;
+  queue_anim((Event){.tag = 1, .variant.wait = time});
 }
 
 void draw_text(char *text, Vector2 position, int font_size, Color color) {
-  position.x *= scale;
-  position.y *= scale;
-  font_size *= scale;
-  // Center text
-  Vector2 size = MeasureTextEx(GetFontDefault(), text, font_size, 4 * scale);
+  Vector2 size = MeasureTextEx(GetFontDefault(), text, font_size, 4);
+  // Draw text
+  DrawTextEx(GetFontDefault(), text, position, font_size, 4, color);
+}
+
+void draw_text_centered(char *text, Vector2 position, int font_size,
+                        Color color) {
+  Vector2 size = MeasureTextEx(GetFontDefault(), text, font_size, 4);
   position.x -= size.x / 2;
   position.y -= size.y / 2;
   // Draw text
-  DrawTextEx(GetFontDefault(), text, position, font_size, 4 * scale, color);
+  DrawTextEx(GetFontDefault(), text, position, font_size, 4, color);
 }
 
 void draw() {
@@ -250,9 +245,19 @@ void draw() {
       }
       break;
     }
+    case 2: {
+      uint16_t wallet = current_ev.variant.money.wallet;
+      uint16_t amount = current_ev.variant.money.amount;
+      old_display_moneys[wallet] = display_moneys[wallet];
+      new_display_moneys[wallet] = amount;
+      money_animation_start[wallet] = current_time;
+      event_queue_start = current_index;
+      last_event_start = current_time;
+      break;
+    }
     }
   }
-  // Process ongoing animations
+  // Card animations
   for (int i = 0; i < CARD_COUNT; i++) {
     card_flips[i] = lerp_float(card_old_flips[i], card_new_flips[i],
                                animation_start[i], FLIP_SPEED, 1);
@@ -261,10 +266,56 @@ void draw() {
     card_rotations[i] = lerp_float(card_old_rotations[i], card_new_rotations[i],
                                    animation_start[i], ROTATE_SPEED, 0.25);
   }
-  // Draw all objects
-  ClearBackground(GREEN);
-  // Draw moving cards first as a hack
-  for (int i = 0; i < CARD_COUNT; i++) {
-    draw_card(deck[i], card_positions[i], card_rotations[i], card_flips[i]);
+  // Money animations
+  for (int i = 0; i < 5; i++) {
+    display_moneys[i] =
+        (int16_t)lerp_float(old_display_moneys[i], new_display_moneys[i],
+                            money_animation_start[i], 2.5, 1.0);
   }
+  BeginDrawing();
+  BeginTextureMode(canvas);
+  ClearBackground(GREEN);
+  // Draw cards
+  for (int i = 0; i < CARD_COUNT; i++) {
+    draw_card(face_values[i], card_positions[i], card_rotations[i],
+              card_flips[i]);
+  }
+  // Draw player moneys
+  char buffer[64] = {};
+  snprintf(buffer, 64, "P1:  $%d\nP2:  $%d\nP3:  $%d\nYou: $%d\n",
+           display_moneys[0], display_moneys[1], display_moneys[2],
+           display_moneys[3]);
+  draw_text(buffer, (Vector2){10, (float)WORLD_HEIGHT / 2 + CARD_HEIGHT}, 20,
+            BLACK);
+  // Draw pot money
+  snprintf(buffer, 64, "Pot: $%d", display_moneys[4]);
+  draw_text_centered(
+      buffer, (Vector2){WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0 - CARD_HEIGHT},
+      20, BLACK);
+  // Draw result
+  if (display_hand != 0) {
+    draw_text_centered(
+        hand_value_string(display_hand),
+        (Vector2){WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0 + CARD_HEIGHT}, 20,
+        BLACK);
+  }
+  EndTextureMode();
+  Rectangle src = {0, 0, WORLD_WIDTH, -WORLD_HEIGHT};
+  // Correct for window's aspect ratio
+  Rectangle window = {0, 0, GetScreenWidth(), GetScreenHeight()};
+  float window_ratio = window.width / window.height;
+  if (window_ratio >= 16.0 / 9.0) {
+    // Too wide
+    float new_width = (window.height / 9.0) * 16.0;
+    window.x += (window.width - new_width) / 2.0;
+    window.width = new_width;
+  } else {
+    // Too tall
+    float new_height = (window.width / 16.0) * 9.0;
+    window.y += (window.height - new_height) / 2.0;
+    window.height = new_height;
+  }
+  ClearBackground(BLACK);
+  DrawTexturePro(canvas.texture, src, window, (Vector2){0, 0}, 0, WHITE);
+  EndDrawing();
 }

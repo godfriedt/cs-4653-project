@@ -11,7 +11,7 @@ const Card JOKER_RED = 14 | Spade;
 
 Card new_card(Face face, Suite suite) { return face | suite; }
 
-Card deck[CARD_COUNT] = {};
+Card face_values[CARD_COUNT] = {};
 
 Face get_face(Card card) { return (card & 0xff); }
 
@@ -76,7 +76,7 @@ void print_card(Card card) {
   printf("\n");
 }
 // Sorted from ace of hearts to king of spades
-void init_deck(Card *memory) {
+void init_face_values() {
   const int FIRST_SUITE = Club;
   const int LAST_SUITE = Heart;
   const int FIRST_CARD = Ace;
@@ -85,7 +85,7 @@ void init_deck(Card *memory) {
   Suite suite = FIRST_SUITE;
   Face face = FIRST_CARD;
   for (int i = 0; i < 52; i++) {
-    memory[i] = new_card(face, suite);
+    face_values[i] = new_card(face, suite);
     suite += (1 << 8);
     if (suite > LAST_SUITE) {
       face += 1;
@@ -96,12 +96,12 @@ void init_deck(Card *memory) {
   }
 }
 // Fisher-Yates shuffle
-void shuffle_deck(Deck to_shuffle) {
+void shuffle_face_values() {
   for (int i = 0; i < 52; i++) {
-    Card temp = to_shuffle[i];
+    Card temp = face_values[i];
     size_t random_card = rand() % 52;
-    to_shuffle[i] = to_shuffle[random_card];
-    to_shuffle[random_card] = temp;
+    face_values[i] = face_values[random_card];
+    face_values[random_card] = temp;
   }
 }
 void print_deck(Deck deck) {

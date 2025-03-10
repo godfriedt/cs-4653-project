@@ -28,7 +28,7 @@ typedef enum {
 typedef int16_t Card;
 typedef Card *Deck;
 
-extern Card deck[CARD_COUNT];
+extern Card face_values[CARD_COUNT];
 
 const extern Card BACKFACE;
 const extern Card JOKER_BLACK;
@@ -38,21 +38,21 @@ Card new_card(Face, Suite);
 Face get_face(Card);
 Suite get_suite(Card);
 void print_card(Card);
-void init_deck(Card *);
-void shuffle_deck(Deck);
+void init_face_values();
+void shuffle_face_values();
 void print_deck(Deck);
 
 typedef enum {
-  HighCard = 0 << 8,
-  TwoKind = 1 << 8,
-  TwoPair = 2 << 8,
-  ThreeKind = 3 << 8,
-  Straight = 4 << 8,
-  Flush = 5 << 8,
-  FullHouse = 6 << 8,
-  FourKind = 7 << 8,
-  StraightFlush = 8 << 8,
-  RoyalFlush = 9 << 8,
+  HighCard = 1 << 8,
+  TwoKind = 2 << 8,
+  TwoPair = 3 << 8,
+  ThreeKind = 4 << 8,
+  Straight = 5 << 8,
+  Flush = 6 << 8,
+  FullHouse = 7 << 8,
+  FourKind = 8 << 8,
+  StraightFlush = 9 << 8,
+  RoyalFlush = 10 << 8,
 } HandRank;
 typedef uint16_t HandValue;
 HandValue evaluate_hand(Card hand[2], Card board[5]);
