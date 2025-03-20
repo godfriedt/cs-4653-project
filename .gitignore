@@ -1,0 +1,10 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/cs4653-project/x64/Debug/vcpkg.applocal.log
+/cs4653-project/x64/Debug
+/x64/Debug
+/.vs/cs-4653-project
+/.vs/cs4653-project-solution
+/.vs
