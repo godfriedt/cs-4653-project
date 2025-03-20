@@ -9,13 +9,7 @@
 
 HandValue display_hand = 0;
 
-const int WORLD_WIDTH = 640;
-const int WORLD_HEIGHT = 360;
-
 static RenderTexture2D canvas;
-
-const float CARD_HEIGHT = 77.0;
-const float CARD_WIDTH = 52.0;
 
 static int init = 0;
 static Texture2D card_atlas;
@@ -45,7 +39,7 @@ void draw_card(Card card, Vector2 position, float rotation, float flip) {
       RAYWHITE);
 }
 
-const Vector2 ZERO = (Vector2){0, 0};
+const Vector2 ZERO = {0, 0};
 const float FLIP_SPEED = 8.0;
 const float MOVE_SPEED = 4.0;
 const float ROTATE_SPEED = 6.0;

@@ -5,10 +5,10 @@
 #include <stddef.h>
 
 // Pixel art resolution to upscale from (px)
-const extern int WORLD_WIDTH;
-const extern int WORLD_HEIGHT;
-const extern float CARD_HEIGHT;
-const extern float CARD_WIDTH;
+#define WORLD_WIDTH 640
+#define WORLD_HEIGHT 360
+#define CARD_HEIGHT 77.0
+#define CARD_WIDTH 52.0
 const extern Vector2 DECK_POSITION;
 const extern Vector2 HAND_POSITIONS[4][2];
 extern HandValue display_hand;
