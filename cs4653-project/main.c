@@ -9,6 +9,9 @@
 // #include <Windows.h>
 
 int main(void) {
+
+  checkDebugger(); // Check for debugger at the start of the program
+
   Card hand[5] = {Seven | Diamond, Queen | Club, Two | Spade, Four | Heart,
                   Ten | Club};
   Card hand2[2] = {King | Heart, Seven | Heart};
