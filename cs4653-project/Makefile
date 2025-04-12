@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -g -Wall
 LFLAGS = -L./lib -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-OBJECTS = main.o cards.o drawing.o gameloop.o
+OBJECTS = main.o cards.o drawing.o gameloop.o password.o
 
 clean_build: clean all
 

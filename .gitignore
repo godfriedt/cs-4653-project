@@ -8,3 +8,5 @@
 /.vs/cs-4653-project
 /.vs/cs4653-project-solution
 /.vs
+*.o
+
