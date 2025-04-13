@@ -20,14 +20,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cards.c" />
+    <ClCompile Include="debuggerFunctions.c" />
     <ClCompile Include="drawing.c" />
     <ClCompile Include="gameloop.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="password.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cards.h" />
+    <ClInclude Include="debuggerFunctions.h" />
     <ClInclude Include="drawing.h" />
     <ClInclude Include="gameloop.h" />
+    <ClInclude Include="password.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />

@@ -27,6 +27,12 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="password.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="debuggerFunctions.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cards.h">
@@ -36,6 +42,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gameloop.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="password.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="debuggerFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
