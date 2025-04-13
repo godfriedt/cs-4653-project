@@ -12,6 +12,14 @@
 const extern Vector2 DECK_POSITION;
 const extern Vector2 HAND_POSITIONS[4][2];
 extern HandValue display_hand;
+typedef enum {
+  NoButton,
+  BetButton,
+  CallButton,
+  FoldButton,
+} ButtonState;
+extern ButtonState button_choice;
+extern float bet_spinner_value;
 
 void init_drawing();
 void draw_card(Card, Vector2 position, float rotation, float flip);

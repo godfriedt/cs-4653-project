@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 #define EVENT_QUEUE_SIZE 256
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 HandValue display_hand = 0;
 
@@ -208,6 +210,54 @@ void draw_text_centered(char *text, Vector2 position, int font_size,
   DrawTextEx(GetFontDefault(), text, position, font_size, 4, color);
 }
 
+ButtonState button_choice = NoButton;
+
+float bet_spinner_value = 0;
+
+Rectangle window = {};
+
+void draw_ui() {
+  GuiSetStyle(DEFAULT, TEXT_SIZE, (int)(0.04 * window.height));
+  GuiSetStyle(DEFAULT, TEXT_SPACING, (4.0 / 640.0) * window.height);
+  Vector2 center = {window.x + (float)window.width * 0.8,
+                    window.y + (float)window.height * 0.85};
+  Vector2 size = {0.3125 * window.width, 0.208 * window.height};
+  // Panel
+  Rectangle bounds = {.x = center.x - size.x / 2,
+                      .y = center.y - size.y / 2,
+                      .width = size.x,
+                      .height = size.y};
+  GuiPanel(bounds, NULL);
+  // Buttons
+  Rectangle bet_button_bounds = {.x = bounds.x,
+                                 .y = bounds.y,
+                                 .width = bounds.width / 3,
+                                 .height = bounds.height / 2};
+  if (GuiButton(bet_button_bounds, "BET"))
+    button_choice = BetButton;
+  Rectangle call_button_bounds = {.x = bounds.x + bounds.width / 3,
+                                  .y = bounds.y,
+                                  .width = bounds.width / 3,
+                                  .height = bounds.height / 2};
+  if (GuiButton(call_button_bounds, "CALL"))
+    button_choice = CallButton;
+  Rectangle fold_button_bounds = {.x = bounds.x + bounds.width / 3 * 2,
+                                  .y = bounds.y,
+                                  .width = bounds.width / 3,
+                                  .height = bounds.height / 2};
+  if (GuiButton(fold_button_bounds, "FOLD"))
+    button_choice = FoldButton;
+  // Slider
+  Rectangle slider_bounds = {bounds.x, bounds.y + bounds.height / 2.0,
+                             .width = bounds.width,
+                             .height = bounds.height / 2};
+  GuiSlider(slider_bounds, NULL, NULL, &bet_spinner_value, 0.0, 2000.0);
+  bet_spinner_value = roundf(bet_spinner_value / 10.0) * 10.0;
+  char buffer[64] = {};
+  snprintf(buffer, 64, "$%d", (int)bet_spinner_value);
+  GuiDrawText(buffer, slider_bounds, 1, BLACK);
+}
+
 void draw() {
   current_time = GetTime();
   // Process event queue
@@ -293,10 +343,11 @@ void draw() {
         (Vector2){WORLD_WIDTH / 2.0, WORLD_HEIGHT / 2.0 + CARD_HEIGHT}, 20,
         BLACK);
   }
+  // Gui
   EndTextureMode();
   Rectangle src = {0, 0, WORLD_WIDTH, -WORLD_HEIGHT};
   // Correct for window's aspect ratio
-  Rectangle window = {0, 0, GetScreenWidth(), GetScreenHeight()};
+  window = (Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()};
   float window_ratio = window.width / window.height;
   if (window_ratio >= 16.0 / 9.0) {
     // Too wide
@@ -311,5 +362,6 @@ void draw() {
   }
   ClearBackground(BLACK);
   DrawTexturePro(canvas.texture, src, window, (Vector2){0, 0}, 0, WHITE);
+  draw_ui();
   EndDrawing();
 }
