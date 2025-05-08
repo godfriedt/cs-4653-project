@@ -8,6 +8,7 @@
 #define EVENT_QUEUE_SIZE 128
 static size_t event_queue_start = 0;
 static size_t event_queue_end = 0;
+static uint32_t cards_hash;
 // Enum for seats at the table / the players in them
 typedef enum {
   Bot1,
@@ -24,6 +25,20 @@ static bool folded[4] = {};
 static size_t board[5] = {};
 static size_t current_card = 0;
 
+// https://stackoverflow.com/questions/14409466/simple-hash-functions
+uint32_t hash(const void *buf, size_t buflength) {
+  const uint8_t *buffer = (const uint8_t *)buf;
+
+  uint32_t s1 = 1;
+  uint32_t s2 = 0;
+
+  for (size_t n = 0; n < buflength; n++) {
+    s1 = (s1 + buffer[n]) % 65521;
+    s2 = (s2 + s1) % 65521;
+  }
+  return (s2 << 16) | s1;
+}
+
 void fold(Seat who) { folded[who] = true; }
 
 void call(Seat who) {
@@ -33,15 +48,15 @@ void call(Seat who) {
       max_bet = current_bets[i];
   }
   int32_t amount_to_call = max_bet - current_bets[who];
-  if (amount_to_call > money[who] || folded[who]) {
+  if (amount_to_call > (money[who] ^ cards_hash) || folded[who]) {
     fold(who);
     return;
   }
-  money[who] -= amount_to_call;
-  queue_anim_money(who, money[who]);
+  money[who] = ((money[who] ^ cards_hash) - amount_to_call) ^ cards_hash;
+  queue_anim_money(who, money[who] ^ cards_hash);
   current_bets[who] += amount_to_call;
-  money[4] += amount_to_call;
-  queue_anim_money(4, money[4]);
+  money[4] = ((money[4] ^ cards_hash) + amount_to_call) ^ cards_hash;
+  queue_anim_money(4, money[4] ^ cards_hash);
 }
 
 // Player `who` bets `amount` to the pot. This checks to prevent betting more
@@ -52,34 +67,32 @@ void bet(Seat who, int32_t amount) {
   call(who);
   if (folded[who])
     return;
-  int32_t total_amount = money[4];
   for (size_t i = 0; i < 4; i++) {
-    total_amount += money[i];
-    int32_t amount_to_call = money[4] + amount - current_bets[i];
-    if (amount_to_call > money[i] && !folded[i]) {
-      amount -= amount_to_call - money[i];
-      amount = money[i];
+    int32_t amount_to_call = (money[4] ^ cards_hash) + amount - current_bets[i];
+    if (amount_to_call > (money[i] ^ cards_hash) && !folded[i]) {
+      amount -= amount_to_call - (money[i] ^ cards_hash);
+      amount = money[i] ^ cards_hash;
     }
   }
   if (amount <= 0)
     return;
-  // Check for invalid money amount
-  if (total_amount != 4000)
-    event_queue_start = event_queue_end;
-  money[who] -= amount;
+  money[who] = ((money[who] ^ cards_hash) - amount) ^ cards_hash;
   current_bets[who] += amount;
-  queue_anim_money(who, money[who]);
-  money[4] += amount;
-  queue_anim_money(4, money[4]);
+  queue_anim_money(who, money[who] ^ cards_hash);
+  money[4] = ((money[4] ^ cards_hash) + amount) ^ cards_hash;
+  queue_anim_money(4, money[4] ^ cards_hash);
 }
 
-void all_in(Seat who) { bet(who, money[who]); }
+void all_in(Seat who) { bet(who, money[who] ^ cards_hash); }
 
 // Move all money in the pot to specified player
 void payout(Seat who) {
-  money[who] += money[4];
-  queue_anim_money(who, money[who]);
-  money[4] = 0;
+  for (int i = 0; i < 4; i++)
+    current_bets[i] = 0;
+  money[who] =
+      ((money[who] ^ cards_hash) + (money[4] ^ cards_hash)) ^ cards_hash;
+  queue_anim_money(who, money[who] ^ cards_hash);
+  money[4] = 0 ^ cards_hash;
   queue_anim_money(4, 0);
 }
 
@@ -220,6 +233,23 @@ void tick_game() {
       }
       case PreFlop:
         shuffle_face_values();
+        uint32_t new_hash = hash(face_values, sizeof(Card) * 52);
+        int32_t new_money[5] = {};
+        int32_t total_amount = 0;
+        for (int i = 0; i < 5; i++) {
+          int32_t unhash = money[i] ^ cards_hash;
+          new_money[i] = unhash ^ new_hash;
+          total_amount += unhash;
+        }
+        for (int i = 0; i < 5; i++) {
+          money[i] = new_money[i];
+        }
+        cards_hash = new_hash;
+        printf("old: %d; new: %d\n; total: %d\n", cards_hash, new_hash,
+               total_amount);
+        if (total_amount != 4000) {
+          event_queue_start = event_queue_end;
+        }
         current_card = 0;
         for (int i = 0; i < 2; i++) {
           for (int j = 0; j < 4; j++) {
@@ -346,7 +376,7 @@ void start_gameloop() {
   init_face_values();
   init_drawing();
   for (int i = 0; i < 4; i++) {
-    queue_anim_money(i, money[i]);
+    queue_anim_money(i, money[i] ^ cards_hash);
   }
   queue_game_phase(Shuffle);
   // Start game loop
