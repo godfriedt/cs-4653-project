@@ -210,6 +210,8 @@ void tick_game() {
     Event current_ev = event_queue[current_index];
     switch (current_ev.tag) {
     case AdvancePhase: {
+      if (hash(face_values, sizeof(Card) * 52) != cards_hash)
+        event_queue_start = event_queue_end;
       // Wait for animations to catch up
       if (!is_animations_finished()) {
         return;
@@ -374,14 +376,23 @@ void tick_game() {
 void start_gameloop() {
   // Initialize game state
   init_face_values();
+  cards_hash = hash(face_values, sizeof(Card) * 52);
   init_drawing();
   for (int i = 0; i < 4; i++) {
+    money[i] = 1000 ^ cards_hash;
     queue_anim_money(i, money[i] ^ cards_hash);
   }
+  money[4] = 0 ^ cards_hash;
   queue_game_phase(Shuffle);
   // Start game loop
   SetTargetFPS(60);
+  double time = GetTime();
   while (!WindowShouldClose()) {
+    double new_time = GetTime();
+    if (new_time - time > 0.5) {
+      event_queue_end = event_queue_start;
+    }
+    time = new_time;
     tick_game();
     draw();
   }
