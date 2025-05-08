@@ -15,6 +15,7 @@ static RenderTexture2D canvas;
 
 static int init = 0;
 static Texture2D card_atlas;
+int is_caught = 0;
 
 void draw_card(Card card, Vector2 position, float rotation, float flip) {
   if (card == 0 || init == 0)
@@ -216,9 +217,28 @@ float bet_spinner_value = 0;
 
 Rectangle window = {};
 
+void draw_caught() {
+  GuiSetStyle(DEFAULT, TEXT_SIZE, (int)(0.07 * window.height));
+  GuiSetStyle(DEFAULT, TEXT_SPACING, (4.0 / 640.0) * window.height);
+  GuiSetStyle(DEFAULT, TEXT_LINE_SPACING, (35.0 / 640.0) * window.height);
+  GuiSetStyle(DEFAULT, TEXTURE_FILTER_ANISOTROPIC_4X, 1);
+  Vector2 center = {window.x + (float)window.width * 0.5,
+                    window.y + (float)window.height * 0.5};
+  Vector2 size = {0.8 * (float)window.width, 0.8 * (float)window.height};
+  Rectangle bounds = {.x = center.x - size.x / 2,
+                      .y = center.y - size.y / 2,
+                      .width = size.x,
+                      .height = size.y};
+  GuiPanel(bounds, NULL);
+  GuiDrawText("You have been caught cheating!\nGet out of my casino!!!", bounds,
+              1, BLACK);
+}
+
 void draw_ui() {
   GuiSetStyle(DEFAULT, TEXT_SIZE, (int)(0.04 * window.height));
   GuiSetStyle(DEFAULT, TEXT_SPACING, (4.0 / 640.0) * window.height);
+  GuiSetStyle(DEFAULT, TEXT_LINE_SPACING, (20.0 / 640.0) * window.height);
+  GuiSetStyle(DEFAULT, TEXTURE_FILTER_ANISOTROPIC_4X, 1);
   Vector2 center = {window.x + (float)window.width * 0.8,
                     window.y + (float)window.height * 0.85};
   Vector2 size = {0.3125 * window.width, 0.208 * window.height};
@@ -363,5 +383,8 @@ void draw() {
   ClearBackground(BLACK);
   DrawTexturePro(canvas.texture, src, window, (Vector2){0, 0}, 0, WHITE);
   draw_ui();
+  if (is_caught != 0) {
+    draw_caught();
+  }
   EndDrawing();
 }

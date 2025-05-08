@@ -20,6 +20,7 @@ typedef enum {
 } ButtonState;
 extern ButtonState button_choice;
 extern float bet_spinner_value;
+extern int is_caught;
 
 void init_drawing();
 void draw_card(Card, Vector2 position, float rotation, float flip);

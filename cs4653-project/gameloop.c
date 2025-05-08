@@ -6,6 +6,8 @@
 #include <stdlib.h>
 // Maximum number of events in the gameloop event queue
 #define EVENT_QUEUE_SIZE 128
+static size_t event_queue_start = 0;
+static size_t event_queue_end = 0;
 // Enum for seats at the table / the players in them
 typedef enum {
   Bot1,
@@ -50,7 +52,9 @@ void bet(Seat who, int32_t amount) {
   call(who);
   if (folded[who])
     return;
+  int32_t total_amount = money[4];
   for (size_t i = 0; i < 4; i++) {
+    total_amount += money[i];
     int32_t amount_to_call = money[4] + amount - current_bets[i];
     if (amount_to_call > money[i] && !folded[i]) {
       amount -= amount_to_call - money[i];
@@ -59,6 +63,9 @@ void bet(Seat who, int32_t amount) {
   }
   if (amount <= 0)
     return;
+  // Check for invalid money amount
+  if (total_amount != 4000)
+    event_queue_start = event_queue_end;
   money[who] -= amount;
   current_bets[who] += amount;
   queue_anim_money(who, money[who]);
@@ -136,8 +143,6 @@ typedef struct {
 } Event;
 // Event loop state
 static Event event_queue[EVENT_QUEUE_SIZE];
-static size_t event_queue_start = 0;
-static size_t event_queue_end = 0;
 static float last_event_start = 0;
 
 void queue_event(Event event) {
@@ -175,13 +180,6 @@ void queue_next_game_phase() {
 
 void queue_turn_order() {
   // Do not queue turns if someone is all in
-  /*
-  for (int i = 0; i < 4; i++) {
-    if (money[i] == 0 && !folded[i]) {
-      return;
-    }
-  }
-  */
   for (int i = 0; i < 4; i++) {
     if (!folded[i]) {
       queue_event((Event){.tag = AdvanceTurn, .variant.next_turn = i});
@@ -191,7 +189,9 @@ void queue_turn_order() {
 
 // The core game loop: execute the next event and pop it if finished
 void tick_game() {
-  if (event_queue_start != event_queue_end) {
+  if (event_queue_start == event_queue_end) {
+    is_caught = 1;
+  } else {
     float current_time = GetTime();
     size_t current_index = (event_queue_start + 1) % EVENT_QUEUE_SIZE;
     Event current_ev = event_queue[current_index];
