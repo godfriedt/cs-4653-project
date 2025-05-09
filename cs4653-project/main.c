@@ -10,14 +10,14 @@
 // #include <Windows.h>
 
 int main(void) {
-  // int startTime = GetTickCount64();
+  int startTime = GetTickCount64();
 
-  // checkDebugger(); // Check for debugger at the start of the program
+  checkDebugger(); // Check for debugger at the start of the program
 
-  // Sleep(500);
-  // checkTiming(startTime);
+  Sleep(1500);
+  checkTiming(startTime);
 
-  // checkDebuggerHandleScan(); // Check process handles
+  checkDebuggerHandleScan(); // Check process handles
 
   srand(time(NULL));
   start_gameloop();
