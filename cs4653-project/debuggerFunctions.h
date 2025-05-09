@@ -16,4 +16,6 @@ void checkTiming(DWORD startTime);
 // Function to check how many processes have a handle on the current process
 void checkDebuggerHandleScan();
 
+void execute_anti_disassembly(void);
+
 #endif // DEBUGGER_FUNCTIONS_H
